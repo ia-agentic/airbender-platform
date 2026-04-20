@@ -17,7 +17,7 @@ env:
 
 jobs:
   lints:
-    runs-on: ubuntu-latest
+    runs-on: matterlabs-ci-runner-high-performance
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -29,8 +29,31 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+  docs-check:
+    if: github.event_name == 'pull_request'
+    runs-on: matterlabs-ci-runner-high-performance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rust-src,llvm-tools-preview
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: mdbook
+      - name: Build mdBook
+        run: mdbook build docs
+      - name: Build workspace rustdocs
+        run: cargo doc --workspace --no-deps --locked
+      - name: Generate workspace API landing page
+        run: |
+          python3 scripts/generate_api_index.py \
+            --workspace-root . \
+            --template scripts/templates/api-index.html.template \
+            --output target/doc/index.html
+
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: matterlabs-ci-runner-high-performance
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -40,13 +63,15 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest
+      - name: Install cargo-binutils
+        run: cargo install cargo-binutils --locked
       - name: Build
         run: cargo build --workspace
       - name: Test
         run: cargo nextest run --workspace
 
   cli-integration:
-    runs-on: ubuntu-latest
+    runs-on: matterlabs-ci-runner-high-performance
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -56,7 +81,7 @@ jobs:
       - name: Install cargo-binutils
         run: cargo install cargo-binutils --locked
       - name: Install cargo-airbender
-        run: cargo install --path crates/cargo-airbender --locked --force --debug
+        run: cargo install --path crates/cargo-airbender --locked --force
       - name: Run cargo-airbender integration flow
         run: |
           # TODO: this is a mess, but it's better than nothing -- to be properly refactored.
@@ -73,3 +98,38 @@ jobs:
 
           # Intentionally only verify command success and proof artifact presence for now.
           test -f "$tmp_dir/proof.bin"
+
+  examples:
+    runs-on: matterlabs-ci-runner-high-performance
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/examples
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rust-src,llvm-tools-preview
+      - name: Install cargo-binutils
+        run: cargo install cargo-binutils --locked
+      - name: Install cargo-airbender
+        run: cargo install --path crates/cargo-airbender --locked --force
+      - name: Build and run cycle markers example
+        run: |
+          cargo airbender build --project examples/cycle-markers/guest -- --locked
+          cargo run --release --manifest-path examples/cycle-markers/host/Cargo.toml --locked
+      - name: Build and prove fibonacci example with dev prover
+        run: |
+          cargo airbender build --project examples/fibonacci/guest -- --locked
+          cargo run --release --manifest-path examples/fibonacci/host/Cargo.toml --locked -- --prove
+      - name: Build and prove std-btreemap example with dev prover
+        run: |
+          cargo airbender build --project examples/std-btreemap/guest -- --locked
+          cargo run --release --manifest-path examples/std-btreemap/host/Cargo.toml --locked -- --prove
+      - name: Build and prove u256-add example with dev prover
+        run: |
+          cargo airbender build --project examples/u256-add/guest -- --locked
+          cargo run --release --manifest-path examples/u256-add/host/Cargo.toml --locked -- --prove
+      - name: Build and run revm-basic example
+        run: |
+          cargo airbender build --project examples/revm-basic/guest -- --locked
+          cargo run --release --manifest-path examples/revm-basic/host/Cargo.toml --locked

@@ -36,8 +36,8 @@ pub struct Manifest {
     pub manifest: String,
     /// Host/guest codec version used to encode runtime payloads.
     pub codec: String,
-    /// Optional target triple used for the build.
-    pub target: Option<String>,
+    /// Target triple used for the build.
+    pub target: String,
     /// Binary image consumed by runtime and proving flows.
     pub bin: ArtifactEntry,
     /// ELF image used for symbol/debug workflows.
@@ -69,6 +69,9 @@ pub struct BuildMetadata {
     /// Indicates unstaged changes at build time.
     #[serde(default, skip_serializing_if = "is_false")]
     pub is_dirty: bool,
+    /// Indicates this build was produced inside a pinned Docker container for reproducibility.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub reproducible: bool,
 }
 
 /// Errors returned by manifest read, write, and parse operations.
@@ -128,7 +131,7 @@ mod tests {
             bin_name: None,
             manifest: MANIFEST_VERSION_V1.to_string(),
             codec: CODEC_VERSION_V0.to_string(),
-            target: None,
+            target: "riscv32im-risc0-zkvm-elf".to_string(),
             bin: ArtifactEntry {
                 path: "app.bin".to_string(),
                 sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -149,6 +152,7 @@ mod tests {
                 git_branch: "main".to_string(),
                 git_commit: "abc123".to_string(),
                 is_dirty: false,
+                reproducible: false,
             },
         };
         let toml = manifest.to_toml().expect("serialize");
@@ -168,13 +172,79 @@ mod tests {
     }
 
     #[test]
+    fn reproducible_field_omitted_when_false() {
+        let manifest = Manifest {
+            package: "demo".to_string(),
+            bin_name: None,
+            manifest: MANIFEST_VERSION_V1.to_string(),
+            codec: CODEC_VERSION_V0.to_string(),
+            target: "riscv32im-risc0-zkvm-elf".to_string(),
+            bin: ArtifactEntry {
+                path: "app.bin".to_string(),
+                sha256: "abc".to_string(),
+            },
+            elf: ArtifactEntry {
+                path: "app.elf".to_string(),
+                sha256: "def".to_string(),
+            },
+            text: ArtifactEntry {
+                path: "app.text".to_string(),
+                sha256: "ghi".to_string(),
+            },
+            build: BuildMetadata {
+                profile: Profile::Release,
+                git_branch: "main".to_string(),
+                git_commit: "abc123".to_string(),
+                is_dirty: false,
+                reproducible: false,
+            },
+        };
+        let toml = manifest.to_toml().expect("serialize");
+        assert!(!toml.contains("reproducible"));
+    }
+
+    #[test]
+    fn reproducible_field_present_when_true() {
+        let manifest = Manifest {
+            package: "demo".to_string(),
+            bin_name: None,
+            manifest: MANIFEST_VERSION_V1.to_string(),
+            codec: CODEC_VERSION_V0.to_string(),
+            target: "riscv32im-risc0-zkvm-elf".to_string(),
+            bin: ArtifactEntry {
+                path: "app.bin".to_string(),
+                sha256: "abc".to_string(),
+            },
+            elf: ArtifactEntry {
+                path: "app.elf".to_string(),
+                sha256: "def".to_string(),
+            },
+            text: ArtifactEntry {
+                path: "app.text".to_string(),
+                sha256: "ghi".to_string(),
+            },
+            build: BuildMetadata {
+                profile: Profile::Release,
+                git_branch: "main".to_string(),
+                git_commit: "abc123".to_string(),
+                is_dirty: false,
+                reproducible: true,
+            },
+        };
+        let toml = manifest.to_toml().expect("serialize");
+        assert!(toml.contains("reproducible = true"));
+        let parsed = Manifest::parse(&toml).expect("parse");
+        assert!(parsed.build.reproducible);
+    }
+
+    #[test]
     fn includes_dirty_flag_when_true() {
         let manifest = Manifest {
             package: "demo".to_string(),
             bin_name: None,
             manifest: MANIFEST_VERSION_V1.to_string(),
             codec: CODEC_VERSION_V0.to_string(),
-            target: None,
+            target: "riscv32im-risc0-zkvm-elf".to_string(),
             bin: ArtifactEntry {
                 path: "app.bin".to_string(),
                 sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -195,6 +265,7 @@ mod tests {
                 git_branch: "main".to_string(),
                 git_commit: "abc123".to_string(),
                 is_dirty: true,
+                reproducible: false,
             },
         };
 
@@ -209,7 +280,7 @@ mod tests {
             bin_name: Some("worker".to_string()),
             manifest: MANIFEST_VERSION_V1.to_string(),
             codec: CODEC_VERSION_V0.to_string(),
-            target: None,
+            target: "riscv32im-risc0-zkvm-elf".to_string(),
             bin: ArtifactEntry {
                 path: "app.bin".to_string(),
                 sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -230,6 +301,7 @@ mod tests {
                 git_branch: "main".to_string(),
                 git_commit: "abc123".to_string(),
                 is_dirty: false,
+                reproducible: false,
             },
         };
 
@@ -246,7 +318,7 @@ mod tests {
             bin_name: None,
             manifest: MANIFEST_VERSION_V1.to_string(),
             codec: CODEC_VERSION_V0.to_string(),
-            target: None,
+            target: "riscv32im-risc0-zkvm-elf".to_string(),
             bin: ArtifactEntry {
                 path: "app.bin".to_string(),
                 sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -267,6 +339,7 @@ mod tests {
                 git_branch: "main".to_string(),
                 git_commit: "abc123".to_string(),
                 is_dirty: false,
+                reproducible: false,
             },
         };
         manifest.manifest = "v2".to_string();

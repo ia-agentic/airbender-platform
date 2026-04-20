@@ -8,6 +8,8 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 categories.workspace = true
+description = "Host-side APIs for executing, proving, and verifying Airbender programs"
+readme = "README.md"
 
 [features]
 default = ["gpu-prover"]
@@ -24,3 +26,7 @@ sha3 = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+sysinfo = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

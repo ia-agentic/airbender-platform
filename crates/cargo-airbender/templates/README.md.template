@@ -1,4 +1,4 @@
-# __AIRBENDER_PROJECT_NAME__
+# {{ project_name }}
 
 This template contains:
 
@@ -20,15 +20,15 @@ Run host execution:
 
 ```sh
 cd ../host
-cargo run
+cargo run --release
 ```
 
 Run host execution + proof:
 
 ```sh
-cargo run -- --prove
+cargo run --release -- --prove
 ```
 
 ## Prover Backend
 
-__AIRBENDER_PROVER_BACKEND_DOC__
+{{ prover_backend_doc }}

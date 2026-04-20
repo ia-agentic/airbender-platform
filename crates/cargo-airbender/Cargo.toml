@@ -8,10 +8,13 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 categories.workspace = true
+description = "Cargo subcommand for scaffolding, building, running, and proving Airbender projects"
+readme = "README.md"
 include = [
     "src/**",
     "templates/**",
     "Cargo.toml",
+    "README.md",
 ]
 
 [features]
@@ -27,7 +30,13 @@ anstyle = { workspace = true }
 bincode = { workspace = true, features = ["alloc", "serde"] }
 clap = { workspace = true, features = ["derive"] }
 dialoguer = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tera = { workspace = true }
 thiserror = { workspace = true }
+toml = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[dev-dependencies]
+insta = { workspace = true }
+tempfile = { workspace = true }

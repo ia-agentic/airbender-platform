@@ -1,4 +1,4 @@
-//! Procedural macros for Airbender guest programs.
+#![doc = include_str!("../README.md")]
 
 use proc_macro::TokenStream;
 use quote::quote;
@@ -101,6 +101,7 @@ pub fn main(attr: TokenStream, item: TokenStream) -> TokenStream {
         #input
 
         #[no_mangle]
+        #[link_section = ".init.rust"]
         #[export_name = "_start_rust"]
         pub extern "C" fn #wrapper_name() -> ! {
             #start_call
